@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>速查表 · npm 命令地图</title>
+<link rel="stylesheet" href="../assets/lesson.css" />
+</head>
+<body>
+<div class="wrap">
+
+<p class="eyebrow">Reference 01 · 速查表 · 可打印</p>
+<h1>npm 命令地图</h1>
+<p class="lede">本仓库 <code>package.json</code> 里每一条 <code>scripts</code> 都拆成了「真实命令 / 读哪个文件 / 改哪个文件 / 什么时候用」。看不懂某条命令时，先查这里，再去看源码。</p>
+
+<div class="callout">
+  <span class="label">读陌生命令的三步法</span>
+  <p>① 打开项目根目录的 <code>package.json</code>，在 <code>scripts</code> 里找到名字 → ② 顺着真实命令找到对应的配置（<code>drizzle.config.ts</code> / <code>vite.config.ts</code> / <code>react-router.config.ts</code>）→ ③ 再顺着配置找到被读写的源码或产物。<a href="https://docs.npmjs.com/cli/v11/using-npm/scripts/">npm 官方说明</a>：<code>npm run</code> 会执行同名脚本，并把 <code>node_modules/.bin</code> 加入 PATH，所以脚本里能直接写 <code>react-router</code>、<code>tsx</code> 这类命令名。</p>
+</div>
+
+<h2>启动与验证（第 1 课范围）</h2>
+<table>
+<thead><tr><th>命令</th><th>真实命令</th><th>读 / 写</th><th>什么时候用</th></tr></thead>
+<tbody>
+<tr><td><code>npm install</code> <span class="tag">npm 内置</span></td><td>按 <code>package-lock.json</code> 安装依赖</td><td>写 <code>node_modules/</code></td><td>首次克隆后；换分支后依赖变了</td></tr>
+<tr><td><code>npm run db:migrate</code></td><td><code>drizzle-kit migrate</code></td><td>读 <code>drizzle.config.ts</code> + <code>drizzle/*.sql</code>；写 <code>data.db</code></td><td>建表 / 迁移升级，幂等</td></tr>
+<tr><td><code>npm run db:seed</code> <span class="tag danger">危险</span></td><td><code>tsx scripts/seed.ts</code></td><td>读 <code>app/db/schema.ts</code> + <code>drizzle/</code>；<strong>删光并重建</strong>全部表后灌示例数据</td><td>只在需要一份干净示例数据时</td></tr>
+<tr><td><code>npm run dev</code></td><td><code>react-router dev</code></td><td>读 <code>vite.config.ts</code> / <code>react-router.config.ts</code> / <code>app/routes.ts</code>；监听 <code>5173</code></td><td>日常开发</td></tr>
+<tr><td><code>npm run test</code></td><td><code>vitest run</code></td><td>跑 <code>app/**/*.test.ts</code> 等用例</td><td>改完代码验证没弄坏东西</td></tr>
+<tr><td><code>npm run typecheck</code></td><td><code>react-router typegen &amp;&amp; tsc</code></td><td>先生成 <code>.react-router/types/</code>，再做类型检查</td><td>改了 loader / 路由后</td></tr>
+</tbody>
+</table>
+
+<div class="callout danger">
+  <span class="label">最容易踩的坑</span>
+  <p><code>scripts/seed.ts:47-69</code> 会先执行 <code>DROP TABLE IF EXISTS</code> 删掉全部表（包括迁移记录表），再重建并灌数据。本地 <code>data.db</code> 里已经有内容时，<strong>不要</strong>为了「初始化」重复跑 <code>db:seed</code>。</p>
+</div>
+
+<h2>构建与运行</h2>
+<table>
+<thead><tr><th>命令</th><th>真实命令</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td><code>npm run build</code></td><td><code>react-router build</code></td><td>产出 <code>build/</code>（服务端 + 客户端两份 bundle）</td></tr>
+<tr><td><code>npm start</code></td><td><code>react-router-serve ./build/server/index.js</code></td><td>跑构建产物，先要 <code>build</code></td></tr>
+<tr><td><code>npm run test:watch</code></td><td><code>vitest</code></td><td>监听改动、持续跑测试</td></tr>
+<tr><td><code>npm run db:generate</code></td><td><code>drizzle-kit generate</code></td><td>改了 <code>app/db/schema.ts</code> 后生成新 SQL 到 <code>drizzle/</code>；<strong>不</strong>直接改库</td></tr>
+<tr><td><code>npm run loc</code></td><td><code>git ls-files | ... | xargs wc -l</code></td><td>统计代码行数，纯辅助</td></tr>
+</tbody>
+</table>
+<p class="note"><a href="https://orm.drizzle.team/docs/kit-overview">Drizzle Kit 官方文档</a>：<code>generate</code> 依据 schema 生成迁移文件，<code>migrate</code> 才把它们应用到数据库。两者是「先写剧本、再照着演」的关系。</p>
+
+<h2>官方课程的 checkpoint 命令</h2>
+<table>
+<thead><tr><th>命令</th><th>真实命令</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td><code>npm run reset &lt;slug&gt;</code> <span class="tag danger">改仓库</span></td><td><code>ai-hero-cli reset --branch=live-run-through ...</code></td><td>把仓库重置到某一课的起点检查点</td></tr>
+<tr><td><code>npm run cherry-pick &lt;slug&gt;</code> <span class="tag danger">改仓库</span></td><td><code>ai-hero-cli cherry-pick --branch=live-run-through ...</code></td><td>把某一课的官方解答拿过来（如 <code>course-star-ratings</code>）</td></tr>
+<tr><td><code>npm run pull</code> <span class="tag danger">改仓库</span></td><td><code>ai-hero-cli pull ...</code></td><td>从上游仓库拉取更新</td></tr>
+<tr><td><code>npm run request-logger</code></td><td><code>tsx request-logger/proxy.ts</code></td><td>官方课程用来观察 agent 请求的教学代理，独立于主应用</td></tr>
+<tr><td><code>npm run request-logger:e2e</code></td><td><code>tsx request-logger/e2e/run.ts</code></td><td>代理工具的端到端测试</td></tr>
+</tbody>
+</table>
+<p class="note">这三条会改动工作区与提交历史，运行前先确认本地改动已保存。示例来自 <a href="https://github.com/ai-hero-dev/ai-coding-crash-course">上游 README</a>：<code>npm run reset try-the-cli</code>、<code>npm run cherry-pick course-star-ratings</code>。</p>
+
+<h2>四条启动命令的正确顺序</h2>
+<div class="flow">
+  <div class="flow-step"><span class="n">01</span><span><code>npm install</code> —— 依赖到位（你的环境已完成）</span></div>
+  <div class="flow-step"><span class="n">02</span><span><code>npm run db:migrate</code> —— 按 <code>drizzle/*.sql</code> 在 <code>data.db</code> 里建表</span></div>
+  <div class="flow-step"><span class="n">03</span><span><code>npm run db:seed</code> —— 灌入课程 / 用户 / 课时等示例数据（<strong>会清库</strong>）</span></div>
+  <div class="flow-step"><span class="n">04</span><span><code>npm run dev</code> —— 启动 SSR 开发服务器，打开 <code>http://localhost:5173</code></span></div>
+</div>
+
+<h2>数据是怎么来到页面的</h2>
+<div class="flow">
+  <div class="flow-step"><span class="n">01</span><span><code>app/db/schema.ts</code> 定义 17 张表</span></div>
+  <div class="flow-step"><span class="n">02</span><span><code>drizzle/*.sql</code> 是建表剧本；<code>scripts/seed.ts</code> 灌示例数据 → <code>data.db</code></span></div>
+  <div class="flow-step"><span class="n">03</span><span><code>app/db/index.ts</code> 打开 <code>data.db</code>，导出 <code>db</code></span></div>
+  <div class="flow-step"><span class="n">04</span><span><code>app/services/*.ts</code> 用 <code>db</code> 查询；<code>app/routes/*.tsx</code> 的 loader 调 service</span></div>
+  <div class="flow-step"><span class="n">05</span><span><code>app/routes.ts</code> 把 URL 映射到路由模块 → 浏览器拿到 HTML</span></div>
+</div>
+
+<div class="lesson-nav">
+  <p><strong>导航</strong></p>
+  <ul>
+    <li><a href="../lessons/0001-scripts-are-the-front-door.html">第 1 课 · 从 package.json 出发，把项目跑起来</a></li>
+    <li><a href="./project-map.html">速查表 02 · 项目地图与数据流</a></li>
+    <li><a href="../lessons/index.html">课程索引</a></li>
+    <li><a href="https://github.com/ai-hero-dev/ai-coding-crash-course">一手资料 · 上游官方仓库 README</a></li>
+    <li><a href="https://docs.npmjs.com/cli/v11/using-npm/scripts/">一手资料 · npm Docs: Scripts</a></li>
+  </ul>
+  <p class="note">看不懂哪一条命令？直接把命令名发给 AI 助手或问我，我会用它单独补一小课。</p>
+</div>
+
+</div>
+</body>
+</html>

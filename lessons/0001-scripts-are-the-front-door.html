@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>0001 · 从 package.json 出发，把项目跑起来</title>
+<link rel="stylesheet" href="../assets/lesson.css" />
+<script src="../assets/quiz.js" defer></script>
+<script src="../assets/checklist.js" defer></script>
+</head>
+<body>
+<div class="wrap">
+
+<p class="eyebrow">第 1 课 · 约 8 分钟 · 官方 Section 1「Before We Start」</p>
+<h1>从 <code>package.json</code> 出发，把项目跑起来</h1>
+<p class="lede">今天只练一个技能：把一个陌生的 <code>npm run X</code> 拆回它真实的命令，并说出它动了哪个文件。做完之后，你会在 <code>http://localhost:5173</code> 看到这个课程平台，而且知道它的数据是从哪来的。</p>
+
+<p class="note"><strong>本课路线：</strong> <a href="#why">为什么先学这个</a> → <a href="#knowledge">最小知识</a> → <a href="#practice">动手 5 步</a> → <a href="#recall">回想练习</a> → <a href="#reading">主阅读</a></p>
+
+<h2 id="why">为什么先学这个</h2>
+<p>官方课程后面每一节，都会让你指挥 AI 助手去读代码、改代码、加功能。要判断它说得对不对，第一件事就是知道<strong>这个项目到底是怎么被启动的、页面上的数据从哪来</strong>。否则助手说「跑一下 db:migrate 就好」，你连它会改什么文件都没法核实。</p>
+<p>而 <code>package.json</code> 的 <code>scripts</code> 恰好是你唯一已经动手用过的东西（npm / 命令行）：它是整个项目的「前门」，也是让 AI 助手勘察陌生代码库时最自然的起点。今天从这个门口进去。</p>
+
+<h2 id="knowledge">最小知识：四条命令，各自动了什么</h2>
+<p>先记住一句话：<code>scripts</code> 字段是<strong>快捷方式表</strong>。<code>npm run dev</code> 不是什么神秘操作，它只是去 <code>package.json</code> 里找到 <code>"dev"</code> 这一行，把后面的字符串交给 shell 执行。npm 还会把 <code>node_modules/.bin</code> 临时加进 PATH，所以脚本里可以直接写 <code>react-router</code>、<code>tsx</code> 这种命令名。这是 <a href="https://docs.npmjs.com/cli/v11/using-npm/scripts/">npm 官方 Scripts 文档</a>写明的机制。</p>
+
+<table>
+<thead><tr><th>命令</th><th>真实命令</th><th>落到哪里</th></tr></thead>
+<tbody>
+<tr><td><code>npm install</code></td><td>按 <code>package-lock.json</code> 装依赖</td><td>写 <code>node_modules/</code></td></tr>
+<tr><td><code>npm run db:migrate</code></td><td><code>drizzle-kit migrate</code></td><td>读 <code>drizzle.config.ts</code> 和 <code>drizzle/*.sql</code>，在 <code>data.db</code> 里建表</td></tr>
+<tr><td><code>npm run db:seed</code></td><td><code>tsx scripts/seed.ts</code></td><td>先删表重建，再灌入课程、用户、课时等示例数据</td></tr>
+<tr><td><code>npm run dev</code></td><td><code>react-router dev</code></td><td>启动 SSR 开发服务器，监听 <code>5173</code> 端口</td></tr>
+</tbody>
+</table>
+
+<p>把中间两条连起来看，数据是这样到页面的：</p>
+<div class="flow">
+  <div class="flow-step"><span class="n">01</span><span><code>app/db/schema.ts</code> 用代码定义表结构</span></div>
+  <div class="flow-step"><span class="n">02</span><span><code>drizzle/*.sql</code> 是建表剧本，<code>db:migrate</code> 把它演到 <code>data.db</code></span></div>
+  <div class="flow-step"><span class="n">03</span><span><code>scripts/seed.ts</code> 灌示例数据；<code>app/db/index.ts</code> 负责打开这个库</span></div>
+  <div class="flow-step"><span class="n">04</span><span><code>npm run dev</code> 启动应用，页面从库里读数据渲染出来</span></div>
+</div>
+<p class="note">依据 <a href="https://orm.drizzle.team/docs/kit-overview">Drizzle Kit 官方文档</a>：<code>generate</code> 负责生成 SQL 迁移文件，<code>migrate</code> 才把它们应用到数据库。本项目已经生成好了 3 个迁移文件，所以你只需要 <code>migrate</code>。</p>
+
+<div class="callout danger">
+  <span class="label">一个必须记住的危险点</span>
+  <p><code>scripts/seed.ts</code> 第 47–69 行会先执行 <code>DROP TABLE IF EXISTS</code> 删掉<strong>全部</strong>表（连迁移记录表一起），再重建并灌数据。所以 <code>db:seed</code> 不是「补充一点示例数据」，而是<strong>清库重来</strong>。本地数据有用时别随手跑。</p>
+</div>
+
+<div class="callout">
+  <span class="label">你的环境已经准备好了</span>
+  <p>当前工作副本里 <code>node_modules/</code> 和 <code>data.db</code> 都已经存在，Node 是 <code>v24.14.1</code>、npm 是 <code>11.21.1</code>（官方要求 Node 22+，已满足）。所以<strong>今天只需要跑 <code>npm run dev</code></strong>，不用重装依赖，更不要重新 seed。上面四条命令是让你读懂「第一次克隆项目时发生了什么」。</p>
+</div>
+
+<div class="callout">
+  <span class="label">顺便练一次工程师的核对习惯</span>
+  <p>本地 <code>README.md</code> 写的是 React Router <strong>v7</strong> + Ably 实时在线，但 <code>package.json</code> 里实际是 <code>react-router 8.3.0</code>，依赖里也<strong>没有</strong> Ably。文档会过时，代码不会。官方课程整门课都在教这件事：拿代码核实助手和文档的说法，而不是照单全收。</p>
+</div>
+
+<h2 id="practice">动手 5 步</h2>
+<p>照着做，每完成一步就打勾（进度会保存在本地，下次打开还在）。</p>
+<section data-checklist="0001-start-the-app">
+<ul class="checklist">
+  <li class="check-item"><input type="checkbox" /><span class="check-text">在 PowerShell 里进入项目根目录并启动：<br /><code>cd 'i:\code_space\ai-coding-crash-course'</code><br /><code>npm run dev</code><br />看到 <code>Local: http://localhost:5173/</code> 就是成功。</span></li>
+  <li class="check-item"><input type="checkbox" /><span class="check-text">浏览器打开 <code>http://localhost:5173</code>，再点进 <code>/courses</code>，确认能看到课程列表 —— 这些课程就是 <code>db:seed</code> 灌进去的。</span></li>
+  <li class="check-item"><input type="checkbox" /><span class="check-text">用编辑器打开 <code>package.json</code>，找到 <code>scripts.dev</code>，把等号右边的真实命令念出来。</span></li>
+  <li class="check-item"><input type="checkbox" /><span class="check-text">向 AI 助手提这个问题（<strong>只让它读，不让它改</strong>）：<br />「只看 <code>package.json</code>、<code>drizzle.config.ts</code> 和 <code>scripts/seed.ts</code>，说明四条启动命令分别读写了哪些文件，不要修改任何文件。」<br />这一步就是官方课程后面反复要练的核心动作：先让助手勘察，再自己核实。</span></li>
+  <li class="check-item"><input type="checkbox" /><span class="check-text">拿它的回答和上面那张表对一遍。有对不上的地方，把原话发给我，我们单独补一小课。</span></li>
+</ul>
+<p class="check-progress" aria-live="polite"></p>
+</section>
+<p class="note no-print">验证完可以按 <code>Ctrl+C</code> 停掉服务器，也可以留着继续往下学。</p>
+
+<h2 id="recall">回想练习</h2>
+<p>先别往回看表格，凭记忆选。选完立刻出结果和解释 —— 想不起来本身就是让记忆变牢的过程。</p>
+
+<section class="quiz" data-quiz="0001-scripts">
+  <div class="quiz-question" data-answer="B">
+    <p class="quiz-prompt">1. <code>npm run dev</code> 的作用是什么？</p>
+    <div class="quiz-options">
+      <button class="quiz-option" data-value="A">安装全部依赖并更新锁文件</button>
+      <button class="quiz-option" data-value="B">启动本地服务器并监听改动</button>
+      <button class="quiz-option" data-value="C">清空数据表并重新插入示例</button>
+      <button class="quiz-option" data-value="D">生成建表语句并写入文件中</button>
+    </div>
+    <p class="quiz-feedback" data-explain="<code>package.json</code> 里是 <code>&quot;dev&quot;: &quot;react-router dev&quot;</code>：启动带热更新的开发服务器；SSR 由 <code>react-router.config.ts</code> 的 <code>ssr: true</code> 打开。"></p>
+  </div>
+
+  <div class="quiz-question" data-answer="D">
+    <p class="quiz-prompt">2. <code>npm run db:seed</code> 为什么不能随便重复执行？</p>
+    <div class="quiz-options">
+      <button class="quiz-option" data-value="A">它会只补充新增的示例课程</button>
+      <button class="quiz-option" data-value="B">它会重新编译前端页面组件</button>
+      <button class="quiz-option" data-value="C">它会启动本地的开发服务器</button>
+      <button class="quiz-option" data-value="D">它会先删光全部已有数据表</button>
+    </div>
+    <p class="quiz-feedback" data-explain="<code>scripts/seed.ts:47-69</code> 先 <code>DROP TABLE IF EXISTS</code> 所有表，再执行 <code>migrate()</code> 重建，最后灌示例数据。本地数据会丢。"></p>
+  </div>
+
+  <div class="quiz-question" data-answer="C">
+    <p class="quiz-prompt">3. 想查 <code>npm run db:migrate</code> 真实执行什么，先看哪里？</p>
+    <div class="quiz-options">
+      <button class="quiz-option" data-value="A">数据库目录的建表语句文件</button>
+      <button class="quiz-option" data-value="B">应用目录的路由配置模块里</button>
+      <button class="quiz-option" data-value="C">项目根目录的脚本清单文件</button>
+      <button class="quiz-option" data-value="D">测试目录中的用例集合文件</button>
+    </div>
+    <p class="quiz-feedback" data-explain="先看项目根目录 <code>package.json</code> 的 <code>scripts</code> 字段，那里写着 <code>drizzle-kit migrate</code>；再顺着 <code>drizzle.config.ts</code> 去看 <code>drizzle/</code> 里的 SQL。顺序是「先查快捷方式表，再查被指向的文件」。"></p>
+  </div>
+
+  <div class="quiz-question" data-answer="A">
+    <p class="quiz-prompt">4. 你的环境已有 <code>data.db</code>，今天最稳妥的第一步是？</p>
+    <div class="quiz-options">
+      <button class="quiz-option" data-value="A">直接启动本地的开发服务器</button>
+      <button class="quiz-option" data-value="B">先清空数据库再重新灌数据</button>
+      <button class="quiz-option" data-value="C">先重装依赖再执行建表迁移</button>
+      <button class="quiz-option" data-value="D">先构建产物再启动静态服务</button>
+    </div>
+    <p class="quiz-feedback" data-explain="<code>node_modules</code> 与 <code>data.db</code> 都在，Node 版本也够。重复 seed 会丢数据，<code>build</code> 是生产步骤，今天都不需要。"></p>
+  </div>
+
+  <div class="quiz-toolbar no-print">
+    <span class="quiz-progress"></span>
+    <span class="quiz-score"></span>
+    <button class="btn" data-quiz-reset>重做</button>
+  </div>
+</section>
+
+<h2 id="reading">主阅读</h2>
+<div class="card">
+  <p><strong>今天最值得花 3 分钟读的一手资料：</strong> <a href="https://docs.npmjs.com/cli/v11/using-npm/scripts/">npm Docs · Scripts</a>。重点看两段：<em>Description</em>（<code>npm run</code> 执行 <code>scripts</code> 里的同名命令）和 <em>Environment → PATH</em>（依赖的可执行文件为什么能直接写在脚本里）。读完再回来看本项目的 <code>package.json</code>，会有「原来是这么串起来的」的感觉。</p>
+  <p class="note">配套对照：<a href="https://github.com/ai-hero-dev/ai-coding-crash-course">上游官方仓库 README 的 Getting Started</a>、<a href="https://www.aihero.dev/workshops/ai-coding-crash-course">官方课程页</a>（确认六章结构与课程定位）。</p>
+</div>
+
+<div class="lesson-nav">
+  <p><strong>这一课拿到的东西</strong>：项目已经在浏览器里跑起来了，而且你能指着 <code>package.json</code> 说出 <code>npm run dev</code> 背后发生了什么。下一课我们会用同样的办法，把官方课程的 <code>reset &lt;slug&gt;</code> / <code>cherry-pick &lt;slug&gt;</code> checkpoint 流程拆开。</p>
+  <p><strong>导航</strong></p>
+  <ul>
+    <li><a href="./index.html">课程索引 · 对齐官方六章的完整路径</a></li>
+    <li><a href="../reference/command-map.html">速查表 01 · npm 命令地图（全部 15 条脚本）</a></li>
+    <li><a href="../reference/project-map.html">速查表 02 · 项目地图与数据流</a></li>
+    <li><a href="https://github.com/ai-hero-dev/ai-coding-crash-course">一手资料 · 上游官方仓库 README</a></li>
+  </ul>
+  <p><strong>卡住了就直接问。</strong> 我是你的老师：命令报错、某个词不懂、想换个顺序学、或者想让 AI 助手先解释某段代码，都可以直接发给我，我会按你的疑问临时补一课。</p>
+</div>
+
+<h2>本页引用</h2>
+<ul class="sources">
+  <li><a href="https://docs.npmjs.com/cli/v11/using-npm/scripts/">npm Docs · Scripts</a> —— <code>npm run</code> 与 PATH 机制</li>
+  <li><a href="https://orm.drizzle.team/docs/kit-overview">Drizzle Kit · Migrations</a> —— <code>generate</code> / <code>migrate</code> 分工</li>
+  <li><a href="https://github.com/ai-hero-dev/ai-coding-crash-course">上游官方仓库 README</a> —— 启动命令、六章名称、checkpoint 示例</li>
+  <li><a href="https://www.aihero.dev/workshops/ai-coding-crash-course">AI Coding Crash Course 官方页</a> —— 61 lessons / 6 sections 与课程定位</li>
+  <li>本地源码：<code>package.json</code>、<code>README.md</code>、<code>drizzle.config.ts</code>、<code>scripts/seed.ts</code>、<code>app/db/index.ts</code></li>
+</ul>
+
+</div>
+</body>
+</html>

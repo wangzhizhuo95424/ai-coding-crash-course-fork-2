@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>速查表 · 项目地图与数据流</title>
+<link rel="stylesheet" href="../assets/lesson.css" />
+</head>
+<body>
+<div class="wrap">
+
+<p class="eyebrow">Reference 02 · 速查表 · 可打印</p>
+<h1>项目地图与数据流</h1>
+<p class="lede">这是一个「迷你 Udemy」课程平台：学员浏览课程、看课时、做测验；教师管理课程；管理员管用户和分类。整份地图只回答一个问题 —— 想找某样东西，该打开哪个文件？</p>
+
+<h2>顶层目录</h2>
+<table>
+<thead><tr><th>路径</th><th>里面是什么</th></tr></thead>
+<tbody>
+<tr><td><code>app/</code></td><td>应用全部源码：<code>components/</code>、<code>db/</code>、<code>lib/</code>、<code>routes/</code>、<code>services/</code>、<code>test/</code>，以及 <code>root.tsx</code> / <code>routes.ts</code> / <code>app.css</code></td></tr>
+<tr><td><code>drizzle/</code></td><td>3 个 <code>*.sql</code> 建表迁移 + <code>meta/</code> 快照与日志</td></tr>
+<tr><td><code>scripts/</code></td><td><code>seed.ts</code>：示例数据（会先删表再重建）</td></tr>
+<tr><td><code>request-logger/</code></td><td>官方课程配套的教学用 HTTP 代理，<strong>独立于主应用</strong>，有自己的测试</td></tr>
+<tr><td><code>_internal/</code></td><td><code>feature-ideas.md</code>：课程练习用的待实现功能清单</td></tr>
+<tr><td><code>public/</code></td><td>favicon、课程封面图等静态资源</td></tr>
+<tr><td><code>data.db</code></td><td>SQLite 数据库文件（本地生成，已被 gitignore）</td></tr>
+<tr><td><code>.react-router/types/</code></td><td><strong>生成物</strong>：<code>npm run typecheck</code> / <code>dev</code> 时由 typegen 产生，别手改</td></tr>
+</tbody>
+</table>
+
+<h2>一次页面请求的完整链路</h2>
+<p>以打开课程详情 <code>/courses/:slug</code> 为例（官方课程「Fundamentals」章节会反复用到这条链路）：</p>
+<div class="flow">
+  <div class="flow-step"><span class="n">01</span><span>浏览器请求 URL → <code>app/routes.ts:13</code> 把它映射到 <code>routes/courses.$slug.tsx</code></span></div>
+  <div class="flow-step"><span class="n">02</span><span><code>app/root.tsx</code> 的 <code>Layout</code> / <code>Outlet</code> 与 <code>routes/layout.app.tsx</code> 的布局 loader 先跑</span></div>
+  <div class="flow-step"><span class="n">03</span><span><code>courses.$slug.tsx:54</code> 的 <code>loader</code> 在<strong>服务端</strong>执行：取 slug、查课程、算进度、渲染 Markdown、解析国家定价</span></div>
+  <div class="flow-step"><span class="n">04</span><span>查询下沉到 <code>app/services/courseService.ts</code>，通过 <code>~/db</code> 拿到 <code>db</code></span></div>
+  <div class="flow-step"><span class="n">05</span><span><code>app/db/index.ts</code> 懒加载打开 <code>data.db</code>（一个 Proxy，首次访问才真正连库）</span></div>
+  <div class="flow-step"><span class="n">06</span><span>loader 返回普通对象 → 自动序列化为 <code>loaderData</code> prop → <code>CourseDetail</code> 组件渲染 HTML</span></div>
+</div>
+<p class="note"><a href="https://reactrouter.com/start/framework/data-loading">React Router 官方 Data Loading 文档</a>：SSR 下 <code>loader</code> 只在服务端跑，会从客户端 bundle 中移除，返回值自动序列化成 <code>loaderData</code>。<code>react-router.config.ts</code> 里 <code>ssr: true</code> 是开关。</p>
+
+<h2>关键文件速查</h2>
+<table>
+<thead><tr><th>想找…</th><th>打开…</th></tr></thead>
+<tbody>
+<tr><td>URL 对应哪个页面</td><td><code>app/routes.ts</code>（配置式路由，唯一真源；<strong>不是</strong>按文件名自动发现）</td></tr>
+<tr><td>某页数据从哪来</td><td><code>app/routes/*.tsx</code> 里同文件的 <code>export async function loader</code></td></tr>
+<tr><td>数据库有哪些表</td><td><code>app/db/schema.ts</code>（17 张表，用 <code>sqliteTable</code> 声明）</td></tr>
+<tr><td>具体查询语句</td><td><code>app/services/*.ts</code>（与同名 <code>*.test.ts</code> 共置）</td></tr>
+<tr><td>页面外壳 / 错误处理</td><td><code>app/root.tsx</code>（<code>Layout</code>、<code>ErrorBoundary</code>、<code>links</code>）</td></tr>
+<tr><td>登录状态</td><td><code>app/lib/session.ts</code> 读 cookie <code>cadence_session</code>；<code>/api/switch-user</code> 是教学用的假登录切换</td></tr>
+<tr><td>构建 / 别名 / SSR 开关</td><td><code>vite.config.ts</code>、<code>tsconfig.json</code>（<code>~/</code> → <code>app/</code>）、<code>react-router.config.ts</code>、<code>drizzle.config.ts</code>、<code>components.json</code>（只给 shadcn CLI 用）</td></tr>
+</tbody>
+</table>
+
+<h2>四个新手易踩的坑</h2>
+<div class="card">
+  <p><strong>① 文档不一定对。</strong> 本地 <code>README.md</code> 写 React Router v7 + Ably，但 <code>package.json</code> 实际是 <code>react-router 8.3.0</code> 且没有 Ably 依赖。以代码为准，别以 README 为准 —— 这也是官方课程反复强调的工程态度。</p>
+  <p><strong>② <code>db:seed</code> 会清库。</strong> <code>scripts/seed.ts:47-69</code> 先 <code>DROP TABLE</code> 全部表再重建。本地有数据时别随手跑。</p>
+  <p><strong>③ <code>./ +types/xxx</code> 不是源码。</strong> 路由里的 <code>import type { Route } from "./+types/..."</code> 指向 <code>.react-router/types/</code> 里的生成文件，必须先跑 typegen 才能 typecheck。</p>
+  <p><strong>④ 星标 / 评分功能当前不存在。</strong> 它是课程练习的目标（<code>course-star-ratings</code> checkpoint），不是现有代码。别在仓库里白找。</p>
+</div>
+
+<div class="lesson-nav">
+  <p><strong>导航</strong></p>
+  <ul>
+    <li><a href="./command-map.html">速查表 01 · npm 命令地图</a></li>
+    <li><a href="../lessons/0001-scripts-are-the-front-door.html">第 1 课 · 从 package.json 出发，把项目跑起来</a></li>
+    <li><a href="../lessons/index.html">课程索引</a></li>
+    <li><a href="https://reactrouter.com/start/framework/data-loading">一手资料 · React Router Data Loading</a></li>
+    <li><a href="https://orm.drizzle.team/docs/kit-overview">一手资料 · Drizzle Kit 迁移</a></li>
+  </ul>
+  <p class="note">哪个环节看不懂，直接问 AI 助手或问我；我会按你的疑问单独补一小课，并更新这张地图。</p>
+</div>
+
+</div>
+</body>
+</html>

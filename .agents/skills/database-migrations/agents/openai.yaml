@@ -1,0 +1,3 @@
+interface:
+  display_name: "Database Migrations"
+  short_description: "Migrate, reseed, and recover the disposable database"
